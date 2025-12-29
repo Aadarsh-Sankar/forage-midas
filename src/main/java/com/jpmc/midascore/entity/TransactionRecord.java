@@ -18,14 +18,18 @@ public class TransactionRecord {
     @Column(nullable = false)
     private float amount;
 
+    @Column(nullable = false)
+    private float incentive;
+
     protected TransactionRecord() {
         // for JPA
     }
 
-    public TransactionRecord(UserRecord sender, UserRecord recipient, float amount) {
+    public TransactionRecord(UserRecord sender, UserRecord recipient, float amount, float incentive) {
         this.sender = sender;
         this.recipient = recipient;
         this.amount = amount;
+        this.incentive = incentive;
     }
 
     public Long getId() {
@@ -42,6 +46,10 @@ public class TransactionRecord {
 
     public float getAmount() {
         return amount;
+    }
+
+    public float getIncentive() {
+        return incentive;
     }
 }
 

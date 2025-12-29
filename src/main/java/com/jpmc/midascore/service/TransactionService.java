@@ -3,12 +3,14 @@ package com.jpmc.midascore.service;
 import com.jpmc.midascore.entity.TransactionRecord;
 import com.jpmc.midascore.entity.UserRecord;
 import com.jpmc.midascore.foundation.Transaction;
+import com.jpmc.midascore.foundation.Incentive;
 import com.jpmc.midascore.repository.TransactionRecordRepository;
 import com.jpmc.midascore.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class TransactionService {
@@ -17,10 +19,12 @@ public class TransactionService {
 
     private final UserRepository userRepository;
     private final TransactionRecordRepository transactionRecordRepository;
+    private final RestTemplate restTemplate;
 
-    public TransactionService(UserRepository userRepository, TransactionRecordRepository transactionRecordRepository) {
+    public TransactionService(UserRepository userRepository, TransactionRecordRepository transactionRecordRepository, RestTemplate restTemplate) {
         this.userRepository = userRepository;
         this.transactionRecordRepository = transactionRecordRepository;
+        this.restTemplate = restTemplate;
     }
 
     @Transactional
@@ -39,10 +43,20 @@ public class TransactionService {
             return;
         }
 
-        sender.setBalance(sender.getBalance() - amount);
-        recipient.setBalance(recipient.getBalance() + amount);
+        float incentiveAmount = 0.0f;
+        try {
+            Incentive incentive = restTemplate.postForObject("http://localhost:8080/incentive", transaction, Incentive.class);
+            if (incentive != null) {
+                incentiveAmount = incentive.getAmount();
+            }
+        } catch (Exception ex) {
+            log.warn("Unable to retrieve incentive for transaction {}. Defaulting incentive to 0.", transaction, ex);
+        }
 
-        transactionRecordRepository.save(new TransactionRecord(sender, recipient, amount));
+        sender.setBalance(sender.getBalance() - amount);
+        recipient.setBalance(recipient.getBalance() + amount + incentiveAmount);
+
+        transactionRecordRepository.save(new TransactionRecord(sender, recipient, amount, incentiveAmount));
         userRepository.save(sender);
         userRepository.save(recipient);
     }
